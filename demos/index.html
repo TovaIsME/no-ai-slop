@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>no-ai-slop demos</title>
+<meta name="description" content="The same website requests built by Claude with and without the no-ai-slop skill.">
+<style>
+  :root { --bg: #fafaf8; --text: #1c1c1a; --muted: #62625c; --line: #e2e2dc; --link: #1f5f4a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 64px; }
+  h1 { font-size: 32px; font-weight: 600; margin: 0 0 8px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  p { margin: 0 0 16px; max-width: 68ch; color: var(--muted); }
+  a { color: var(--link); }
+  section { border-top: 1px solid var(--line); padding-top: 32px; margin-top: 32px; }
+  .prompt { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; color: var(--text); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; }
+  figure { margin: 0; }
+  figure img { width: 100%; height: 320px; object-fit: cover; object-position: top; border: 1px solid var(--line); border-radius: 8px; display: block; }
+  figcaption { margin-top: 8px; font-size: 15px; }
+  @media (max-width: 720px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>no-ai-slop demos</h1>
+  <p>Each request below was given to Claude twice: once without the skill and once with it. Nothing was edited afterwards. Click a screenshot to open the real page.</p>
+  <p><a href="https://github.com/TovaIsME/no-ai-slop">Back to the skill on GitHub</a></p>
+
+  <section>
+    <h2>Startup landing page</h2>
+    <p class="prompt">Build me a landing page for my startup Murmur. It joins your Zoom or Google Meet calls, records them, and emails everyone a summary with the decisions and to-dos when the call ends. Free for 10 calls a month, then $12 per user per month. Single HTML file.</p>
+    <div class="pair">
+      <figure><a href="landing-page/without-skill/"><img src="landing-page/without-skill/screenshot.png" alt="Murmur landing page made without the skill"></a><figcaption>Without the skill: <a href="landing-page/without-skill/">open page</a></figcaption></figure>
+      <figure><a href="landing-page/with-skill/"><img src="landing-page/with-skill/screenshot.png" alt="Murmur landing page made with the skill"></a><figcaption>With the skill: <a href="landing-page/with-skill/">open page</a></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Family bakery</h2>
+    <p class="prompt">make a website for my family's bakery, Rosewood Bakery. we do sourdough, croissants and custom birthday cakes. open tue-sun 7am-3pm. one html page is fine</p>
+    <div class="pair">
+      <figure><a href="bakery/without-skill/"><img src="bakery/without-skill/screenshot.png" alt="Rosewood Bakery site made without the skill"></a><figcaption>Without the skill: <a href="bakery/without-skill/">open page</a></figcaption></figure>
+      <figure><a href="bakery/with-skill/"><img src="bakery/with-skill/screenshot.png" alt="Rosewood Bakery site made with the skill"></a><figcaption>With the skill: <a href="bakery/with-skill/">open page</a></figcaption></figure>
+    </div>
+  </section>
+</main>
+</body>
+</html>

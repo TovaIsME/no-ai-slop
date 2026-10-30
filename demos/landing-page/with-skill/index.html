@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Murmur: call notes emailed to everyone when the call ends</title>
+<meta name="description" content="Murmur joins your Zoom or Google Meet calls, records them, and emails everyone a summary with the decisions and to-dos when the call ends. Free for 10 calls a month, then $12 per user per month.">
+<meta property="og:title" content="Murmur: call notes emailed to everyone when the call ends">
+<meta property="og:description" content="Murmur joins your Zoom or Google Meet calls, records them, and emails everyone the decisions and to-dos when the call ends.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%231D5C52'%3E%3Crect x='4' y='8' width='4' height='8' rx='2'/%3E%3Crect x='10' y='4' width='4' height='16' rx='2'/%3E%3Crect x='16' y='7' width='4' height='10' rx='2'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+  :root {
+    /* spacing scale, 4px base */
+    --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+    --s6: 32px; --s7: 48px; --s8: 64px; --s9: 96px;
+
+    /* neutrals */
+    --bg: #FBFBFA;
+    --surface: #FFFFFF;
+    --surface-2: #F1F2EF;
+    --border: #DADDD8;
+    --text: #1B1F1D;
+    --muted: #59605C;
+
+    /* the one accent: buttons, links, focus */
+    --accent: #1D5C52;
+    --accent-hover: #154740;
+
+    /* meaning-only colors */
+    --rec: #C4362C;              /* recording indicator on Murmur's call tile */
+    --todo-bg: #FFF3C4;          /* content the founder still has to fill in */
+    --todo-text: #6B5410;
+    --todo-border: #B8962E;
+
+    /* the drawn video call */
+    --call-bg: #1B1F1D;
+    --tile: #2C3330;
+    --tile-face: #435049;
+    --tile-text: #E6EAE7;
+
+    --radius-s: 4px;
+    --radius-m: 8px;
+
+    --font: Seravek, "Gill Sans Nova", Ubuntu, Calibri, Carlito, "Segoe UI", "Noto Sans", "DejaVu Sans", sans-serif;
+    --font-mail: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Liberation Sans", sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 1.125rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, p, dl, dd, ol, ul, figure { margin: 0; }
+  ol, ul { padding: 0; list-style: none; }
+
+  a { color: var(--accent); text-underline-offset: 0.2em; }
+  a:hover { color: var(--accent-hover); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .skip {
+    position: absolute; left: var(--s4); top: var(--s4);
+    padding: var(--s2) var(--s4);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-s);
+    transform: translateY(-200%);
+  }
+  .skip:focus { transform: none; }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding-left: var(--s6);
+    padding-right: var(--s6);
+  }
+
+  .muted { color: var(--muted); }
+
+  .placeholder {
+    background: var(--todo-bg);
+    color: var(--todo-text);
+    border: 1px dashed var(--todo-border);
+    border-radius: var(--radius-s);
+    padding: 2px var(--s1);
+  }
+
+  /* buttons */
+  .btn {
+    display: inline-block;
+    padding: var(--s3) var(--s5);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-s);
+    background: var(--accent);
+    color: #FFFFFF;
+    font: inherit;
+    font-weight: 600;
+    line-height: 1.25;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #FFFFFF; }
+  .btn-small { padding: var(--s2) var(--s4); font-size: 1rem; }
+
+  /* header */
+  .site-header { border-bottom: 1px solid var(--border); }
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: var(--s6);
+    padding-top: var(--s4);
+    padding-bottom: var(--s4);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    color: var(--text);
+    font-size: 1.375rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .brand svg { width: 24px; height: 24px; color: var(--accent); }
+  .site-nav { display: flex; gap: var(--s5); margin-left: auto; }
+  .site-nav a { color: var(--muted); text-decoration: none; font-size: 1rem; }
+  .site-nav a:hover { color: var(--text); }
+
+  /* hero */
+  .hero { padding: var(--s8) 0 var(--s9); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: var(--s8);
+    align-items: start;
+  }
+  .hero-copy { padding-top: var(--s6); }
+  h1 {
+    font-size: 2.75rem;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    max-width: 13em;
+  }
+  .lede {
+    margin-top: var(--s5);
+    font-size: 1.25rem;
+    color: var(--muted);
+    max-width: 30em;
+  }
+  .hero-copy .btn { margin-top: var(--s6); }
+  .price-line { margin-top: var(--s3); font-size: 1rem; color: var(--muted); }
+
+  /* sample email */
+  .sample figcaption { margin-top: var(--s3); font-size: 0.875rem; color: var(--muted); }
+  .mail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    font-family: var(--font-mail);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    overflow: hidden;
+  }
+  .mail-head {
+    padding: var(--s5) var(--s5) var(--s4);
+    border-bottom: 1px solid var(--border);
+  }
+  .mail-subject { font-size: 1.25rem; font-weight: 600; line-height: 1.3; }
+  .mail-from {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    margin-top: var(--s4);
+  }
+  .mail-avatar {
+    flex: none;
+    display: grid; place-items: center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--accent);
+  }
+  .mail-avatar svg { width: 16px; height: 16px; }
+  .mail-who { display: flex; flex-direction: column; line-height: 1.35; }
+  .mail-who strong { font-weight: 600; }
+  .mail-who span, .mail-date { font-size: 0.8125rem; color: var(--muted); }
+  .mail-date { margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .mail-body { padding: var(--s5); }
+  .mail-meta { font-size: 0.8125rem; color: var(--muted); }
+  .mail-summary { margin-top: var(--s2); }
+  .mail-h { margin-top: var(--s5); font-weight: 600; }
+  .mail-open { margin-top: var(--s2); }
+  .mail-list { margin-top: var(--s2); }
+  .mail-list li {
+    position: relative;
+    padding-left: var(--s4);
+  }
+  .mail-list li + li { margin-top: var(--s1); }
+  .mail-list li::before {
+    content: "";
+    position: absolute; left: 2px; top: 0.65em;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--muted);
+  }
+
+  .todos { margin-top: var(--s2); border-top: 1px solid var(--border); }
+  .todos li {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+    gap: var(--s3);
+    padding: var(--s2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .todo-who { font-weight: 600; }
+  .todo-due {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .mail-attach {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    margin-top: var(--s5);
+    padding: var(--s2) var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    font-size: 0.875rem;
+  }
+  .mail-attach svg { width: 16px; height: 16px; color: var(--accent); }
+
+  /* sections */
+  .section { padding: var(--s9) 0; }
+  .section h2 {
+    font-size: 2rem;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  /* how it works */
+  .how { border-top: 1px solid var(--border); }
+  .how-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--s8);
+    align-items: center;
+  }
+  .steps { margin-top: var(--s6); }
+  .steps li + li { margin-top: var(--s5); }
+  .step-label { font-weight: 600; }
+  .steps p + p { margin-top: var(--s1); color: var(--muted); max-width: 32em; }
+
+  .call {
+    background: var(--call-bg);
+    border-radius: var(--radius-m);
+    padding: var(--s3);
+  }
+  .call-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--s1) var(--s1) var(--s3);
+    color: var(--tile-text);
+    font-family: var(--font-mail);
+    font-size: 0.8125rem;
+    opacity: 0.8;
+  }
+  .call-bar span:last-child { font-variant-numeric: tabular-nums; }
+  .call-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s2);
+  }
+  .tile {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    display: grid; place-items: center;
+    padding-bottom: var(--s5);
+    background: var(--tile);
+    border-radius: var(--radius-s);
+    color: var(--tile-text);
+    font-family: var(--font-mail);
+  }
+  .tile-face {
+    display: grid; place-items: center;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--tile-face);
+    font-size: 1.25rem;
+  }
+  .tile-mark svg { width: 48px; height: 48px; color: var(--tile-text); opacity: 0.9; }
+  .tile-name {
+    position: absolute; left: var(--s2); bottom: var(--s2);
+    display: inline-flex; align-items: center; gap: var(--s2);
+    padding: 2px var(--s2);
+    border-radius: var(--radius-s);
+    background: rgba(0, 0, 0, 0.45);
+    font-size: 0.8125rem;
+  }
+  .rec-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--rec);
+  }
+  .call figcaption {
+    padding: var(--s3) var(--s1) var(--s1);
+    color: var(--tile-text);
+    font-size: 0.9375rem;
+    opacity: 0.85;
+  }
+
+  /* pricing */
+  .pricing {
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--s8);
+    align-items: start;
+  }
+  .plans { margin-top: var(--s6); border-top: 1px solid var(--border); }
+  .plan {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--s1) var(--s5);
+    padding: var(--s5) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .plan-name { font-weight: 600; font-size: 1.375rem; }
+  .plan-price {
+    font-size: 1.375rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .plan-price span { font-size: 1rem; color: var(--muted); }
+  .plan-desc { color: var(--muted); grid-column: 1 / -1; }
+  .pricing-note { margin-top: var(--s5); max-width: 34em; }
+
+  .calc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-m);
+    padding: var(--s5);
+  }
+  .calc-title { font-weight: 600; }
+  .calc label { display: block; margin-top: var(--s4); font-size: 1rem; color: var(--muted); }
+  .stepper { display: flex; margin-top: var(--s2); }
+  .stepper button, .stepper input {
+    height: 44px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+  }
+  .stepper button {
+    width: 44px;
+    cursor: pointer;
+    font-size: 1.25rem;
+    transition: background-color 150ms ease;
+  }
+  .stepper button:hover { background: var(--surface-2); }
+  .stepper button:first-child { border-radius: var(--radius-s) 0 0 var(--radius-s); }
+  .stepper button:last-child { border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+  .stepper input {
+    width: 72px;
+    border-left: 0; border-right: 0;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .stepper input::-webkit-outer-spin-button,
+  .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .calc-total {
+    margin-top: var(--s5);
+    font-size: 2.75rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .calc-total span { font-size: 1.125rem; color: var(--muted); }
+  .calc-sum { margin-top: var(--s1); font-size: 1rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* questions */
+  .qa {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--s6) var(--s8);
+    margin-top: var(--s6);
+  }
+  .qa dt { font-weight: 600; }
+  .qa dd { margin-top: var(--s2); color: var(--muted); max-width: 34em; }
+  .qa dd .placeholder { line-height: 1.7; }
+
+  /* sign-up */
+  .start { border-top: 1px solid var(--border); }
+  .start-inner { max-width: 36rem; }
+  .start p { margin-top: var(--s3); color: var(--muted); }
+  .signup { margin-top: var(--s6); }
+  .signup label { display: block; font-size: 1rem; color: var(--muted); }
+  .field-row { display: flex; gap: var(--s2); margin-top: var(--s2); }
+  .field-row input {
+    flex: 1;
+    min-width: 0;
+    height: 48px;
+    padding: 0 var(--s3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-s);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+  }
+  .field-row input:focus-visible { border-color: var(--accent); }
+  .field-row .btn { height: 48px; padding-top: 0; padding-bottom: 0; }
+
+  /* footer */
+  .site-footer { border-top: 1px solid var(--border); }
+  .footer-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s4) var(--s5);
+    padding-top: var(--s5);
+    padding-bottom: var(--s5);
+    font-size: 1rem;
+    color: var(--muted);
+  }
+  .footer-row nav { display: flex; flex-wrap: wrap; gap: var(--s5); margin-left: auto; }
+  .footer-row a { color: var(--muted); }
+
+  /* narrow screens */
+  @media (max-width: 960px) {
+    .hero-grid, .how-grid, .pricing-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s7); }
+    .hero-copy { padding-top: 0; }
+    .qa { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }
+    .calc { max-width: 28rem; }
+  }
+  @media (max-width: 720px) {
+    .wrap { padding-left: var(--s4); padding-right: var(--s4); }
+    .site-nav { display: none; }
+    .header-row { justify-content: space-between; }
+    .hero { padding: var(--s7) 0 var(--s8); }
+    h1 { font-size: 2rem; }
+    .lede { font-size: 1.125rem; }
+    .section { padding: var(--s8) 0; }
+    .section h2 { font-size: 1.625rem; }
+    .mail-head, .mail-body { padding-left: var(--s4); padding-right: var(--s4); }
+    .todos li { grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--s3); }
+    .todo-task { grid-column: 1 / -1; grid-row: 2; }
+    .tile-face { width: 40px; height: 40px; font-size: 1.125rem; }
+    .tile-mark svg { width: 36px; height: 36px; }
+    .field-row { flex-direction: column; }
+    .field-row input { flex: none; }
+    .footer-row nav { margin-left: 0; }
+  }
+</style>
+</head>
+<body id="top">
+<a class="skip" href="#main">Skip to content</a>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mark" viewBox="0 0 24 24">
+    <g fill="currentColor">
+      <rect x="4" y="8" width="4" height="8" rx="2"/>
+      <rect x="10" y="4" width="4" height="16" rx="2"/>
+      <rect x="16" y="7" width="4" height="10" rx="2"/>
+    </g>
+  </symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap header-row">
+    <a class="brand" href="#top" aria-label="Murmur home">
+      <svg aria-hidden="true"><use href="#mark"/></svg>
+      Murmur
+    </a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#questions">Questions</a>
+    </nav>
+    <a class="btn btn-small" href="#start">Create free account</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <h1>Murmur sits in on your calls and emails everyone the notes</h1>
+        <p class="lede">Add it to a Zoom or Google Meet call. It records the conversation, and when the call ends, everyone who was on it gets an email with what you decided and who&rsquo;s doing what next.</p>
+        <a class="btn" href="#start">Create free account</a>
+        <p class="price-line">Free for 10 calls a month, then $12 per user per month.</p>
+      </div>
+
+      <figure class="sample">
+        <div class="mail">
+          <div class="mail-head">
+            <p class="mail-subject">Spring catalog check-in: decisions and to-dos</p>
+            <div class="mail-from">
+              <span class="mail-avatar"><svg aria-hidden="true"><use href="#mark"/></svg></span>
+              <p class="mail-who"><strong>Murmur</strong><span>to Priya, Tom&aacute;s, Hannah</span></p>
+              <p class="mail-date">Tue 13 Oct</p>
+            </div>
+          </div>
+          <div class="mail-body">
+            <p class="mail-meta">Call on Tuesday 13 October at 10:00, 34 minutes</p>
+            <p class="mail-summary">The launch moves a week later so the product photos can be reshot. Prices and shipping stay as they are.</p>
+
+            <p class="mail-h">Decided</p>
+            <ul class="mail-list">
+              <li>Launch moves from 3 November to 10 November.</li>
+              <li>Free shipping still starts at $50.</li>
+              <li>Hannah signs off the final product copy. Nobody else needs to approve it.</li>
+            </ul>
+
+            <p class="mail-h">To-dos</p>
+            <ul class="todos">
+              <li><span class="todo-who">Tom&aacute;s</span><span class="todo-task">Book the photographer for 27 or 28 October</span><span class="todo-due">Fri 16 Oct</span></li>
+              <li><span class="todo-who">Priya</span><span class="todo-task">Tell the two wholesale accounts about the new date</span><span class="todo-due">Wed 14 Oct</span></li>
+              <li><span class="todo-who">Hannah</span><span class="todo-task">Send notes on the product page copy</span><span class="todo-due">Mon 19 Oct</span></li>
+            </ul>
+
+            <p class="mail-h">Still open</p>
+            <p class="mail-open">Whether to pause the Instagram ads until the 10th. Priya will bring last month&rsquo;s numbers on Friday.</p>
+
+            <p class="mail-attach">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.5v9l7-4.5z" fill="currentColor"/></svg>
+              Recording, 34 min
+            </p>
+          </div>
+        </div>
+        <figcaption>An example summary email from a made-up 34-minute call.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section how" id="how">
+    <div class="wrap how-grid">
+      <div>
+        <h2>What happens on a call</h2>
+        <ol class="steps">
+          <li>
+            <p class="step-label">Before the call</p>
+            <p>Paste the meeting link into Murmur, or connect your calendar and pick the calls you want it on.</p>
+          </li>
+          <li>
+            <p class="step-label">During the call</p>
+            <p>Murmur joins like any other participant, under its own name, and records. It doesn&rsquo;t talk or share its screen.</p>
+          </li>
+          <li>
+            <p class="step-label">When the call ends</p>
+            <p>Everyone who was on the call gets the same email: a few lines on what was discussed, the decisions, the to-dos with the person who took each one, and a link to the recording.</p>
+          </li>
+        </ol>
+      </div>
+
+      <figure class="call">
+        <div class="call-bar" aria-hidden="true"><span>Spring catalog check-in</span><span>10:12</span></div>
+        <div class="call-grid" aria-hidden="true">
+          <div class="tile"><span class="tile-face">P</span><span class="tile-name">Priya</span></div>
+          <div class="tile"><span class="tile-face">T</span><span class="tile-name">Tom&aacute;s</span></div>
+          <div class="tile"><span class="tile-face">H</span><span class="tile-name">Hannah</span></div>
+          <div class="tile"><span class="tile-mark"><svg><use href="#mark"/></svg></span><span class="tile-name"><span class="rec-dot"></span>Murmur, recording</span></div>
+        </div>
+        <figcaption>Murmur has its own tile, so everyone can see it&rsquo;s there and recording.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section pricing" id="pricing">
+    <div class="wrap pricing-grid">
+      <div>
+        <h2>Pricing</h2>
+        <div class="plans">
+          <div class="plan">
+            <p class="plan-name">Free</p>
+            <p class="plan-price">$0</p>
+            <p class="plan-desc">Up to 10 calls a month.</p>
+          </div>
+          <div class="plan">
+            <p class="plan-name">Paid</p>
+            <p class="plan-price">$12 <span>per user per month</span></p>
+            <p class="plan-desc">For when you need Murmur on more than 10 calls a month.</p>
+          </div>
+        </div>
+        <p class="pricing-note">A user is someone who sends Murmur to their own calls. People who only receive the summary email don&rsquo;t need an account, and you don&rsquo;t pay for them.</p>
+      </div>
+
+      <div class="calc">
+        <p class="calc-title">Your monthly cost on the paid plan</p>
+        <label for="seats">People who send Murmur to calls</label>
+        <div class="stepper">
+          <button type="button" data-step="-1" aria-label="One fewer person">&minus;</button>
+          <input id="seats" type="number" inputmode="numeric" min="1" max="999" value="5">
+          <button type="button" data-step="1" aria-label="One more person">+</button>
+        </div>
+        <p class="calc-total"><output id="total" for="seats" aria-live="polite">$60</output> <span>a month</span></p>
+        <p class="calc-sum" id="sum">5 users &times; $12</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="questions">
+    <div class="wrap">
+      <h2>Questions people ask first</h2>
+      <dl class="qa">
+        <div>
+          <dt>Which meeting apps does it work with?</dt>
+          <dd>Zoom and Google Meet.</dd>
+        </div>
+        <div>
+          <dt>Will people on the call know it&rsquo;s recording?</dt>
+          <dd>Yes. Murmur is in the participant list under its own name, the same as everyone else. The host can remove it like any other participant, and it stops recording when it leaves.</dd>
+        </div>
+        <div>
+          <dt>Who gets the email?</dt>
+          <dd>Everyone who was on the call. They don&rsquo;t need a Murmur account to read it.</dd>
+        </div>
+        <div>
+          <dt>Where are recordings kept, and for how long?</dt>
+          <dd><span class="placeholder">[Add where recordings and summaries are stored, how long you keep them, and how someone deletes one.]</span></dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section start" id="start">
+    <div class="wrap">
+      <div class="start-inner">
+        <h2>Try it on your next call</h2>
+        <p>Your first 10 calls each month are free.</p>
+        <form class="signup" action="/signup" method="post">
+          <label for="email">Email</label>
+          <div class="field-row">
+            <input id="email" name="email" type="email" autocomplete="email" required>
+            <button class="btn" type="submit">Create free account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-row">
+    <p>Murmur, 2026</p>
+    <nav aria-label="Legal and contact">
+      <a href="/privacy">Privacy policy</a>
+      <a href="/terms">Terms</a>
+      <span>Contact: <span class="placeholder">[your contact email]</span></span>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var PRICE = 12;
+    var input = document.getElementById('seats');
+    var total = document.getElementById('total');
+    var sum = document.getElementById('sum');
+
+    function clamp(n) {
+      n = Math.round(n);
+      if (isNaN(n) || n < 1) return 1;
+      return Math.min(n, 999);
+    }
+
+    function render() {
+      var n = clamp(Number(input.value));
+      total.textContent = '$' + (n * PRICE).toLocaleString('en-US');
+      sum.textContent = n + (n === 1 ? ' user' : ' users') + ' × $' + PRICE;
+    }
+
+    document.querySelectorAll('[data-step]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        input.value = clamp(Number(input.value) + Number(button.getAttribute('data-step')));
+        render();
+      });
+    });
+    input.addEventListener('input', render);
+    input.addEventListener('blur', function () {
+      input.value = clamp(Number(input.value));
+      render();
+    });
+    render();
+  })();
+</script>
+</body>
+</html>
